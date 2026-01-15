@@ -1,29 +1,37 @@
-import { useState } from 'react';
-import { Search, Calendar, Sun, Moon, Radio } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from "react";
+import { Search, Calendar, Sun, Moon, Radio } from "lucide-react";
+import { motion } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 
 interface TopBarProps {
   sidebarCollapsed: boolean;
 }
 
 export function TopBar({ sidebarCollapsed }: TopBarProps) {
-  const [isDark, setIsDark] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  // Read initial theme from HTML
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains("dark")
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Sync theme with HTML
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+  }, [isDark]);
 
   return (
     <motion.header
       initial={false}
       animate={{ marginLeft: sidebarCollapsed ? 72 : 240 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
       className="fixed top-0 right-0 left-0 h-16 bg-background/80 backdrop-blur-xl border-b border-border z-40 flex items-center px-6"
     >
       <div className="flex items-center gap-4 flex-1">
@@ -79,6 +87,7 @@ export function TopBar({ sidebarCollapsed }: TopBarProps) {
           >
             <Moon className="w-5 h-5" />
           </motion.div>
+
           <motion.div
             initial={false}
             animate={{ rotate: isDark ? -180 : 0, scale: isDark ? 0 : 1 }}
