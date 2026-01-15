@@ -20,7 +20,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Globe, label: 'Global Map', path: '/map' },
   { icon: Newspaper, label: 'Media Bias', path: '/media-bias' },
   { icon: TrendingUp, label: 'Sentiment', path: '/sentiment' },
@@ -28,6 +28,7 @@ const navItems = [
   { icon: FileText, label: 'Reports', path: '/reports' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
+
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
