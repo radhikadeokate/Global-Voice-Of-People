@@ -10,3 +10,6 @@ backend/dist/
 
 # env
 .env
+
+# python
+__pycache__/
