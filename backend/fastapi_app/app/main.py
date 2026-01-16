@@ -6,7 +6,7 @@ load_dotenv("../.env")  # load env from backend folder
 
 app = FastAPI()
 
-@app.get("/health")
+@app.get("/")
 def health_check():
     return {
         "status": "FastAPI backend is running",
