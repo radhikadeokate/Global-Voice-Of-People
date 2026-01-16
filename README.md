@@ -22,7 +22,7 @@ React
 
 Tailwind CSS
 
-JavaScript
+TypeScript
 
 GitHub
 
