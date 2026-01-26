@@ -1,57 +1,57 @@
 # backend/fastapi_app/app/services/news_service.py
 import os
 import re
+import logging
 import requests
 from typing import List, Dict, Any
-from dotenv import load_dotenv
 
-# Load environment variables from .env (safe even if main.py also loads them)
-load_dotenv()
+BASE_URL = "https://gnews.io/api/v4/search"
 
-GNEWS_API_URL = "https://gnews.io/api/v4/search"
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
+logger = logging.getLogger(__name__)
 
-def _ensure_api_key() -> None:
-    """Fail fast if the key is missing."""
-    if not GNEWS_API_KEY:
-        raise RuntimeError("GNEWS_API_KEY is not set. Add it to your .env file.")
 
-def clean_text(text: str) -> str:
-    """Remove HTML tags and normalize whitespace."""
+def _clean_text(text: str) -> str:
     if not text:
         return ""
-    # Strip HTML tags
-    text = re.sub(r"<.*?>", "", text)
-    # Normalize whitespace
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"<.*?>", "", text)   # remove HTML tags
+    text = re.sub(r"\s+", " ", text)    # normalize whitespace
     return text.strip()
 
+
 def fetch_news(topic: str, lang: str = "en", max_results: int = 10) -> List[Dict[str, Any]]:
-    """
-    Fetch news articles from GNews by topic and clean text fields.
-    Only responsibilities: fetch, search by topic, clean text.
-    """
-    _ensure_api_key()
+    api_key = os.getenv("GNEWS_API_KEY")
+    if not api_key:
+        logger.error("GNEWS_API_KEY is not set")
+        raise RuntimeError("GNEWS_API_KEY is not set")
 
     params = {
         "q": topic,
         "lang": lang,
         "max": max_results,
-        "token": GNEWS_API_KEY,
+        "token": api_key,
     }
 
-    resp = requests.get(GNEWS_API_URL, params=params, timeout=15)
-    resp.raise_for_status()
-    data = resp.json()
+    logger.info(
+        f"Fetching news | topic={topic}, lang={lang}, max_results={max_results}"
+    )
 
-    cleaned: List[Dict[str, Any]] = []
-    for a in data.get("articles", []):
-        cleaned.append({
-            "title": clean_text(a.get("title", "")),
-            "description": clean_text(a.get("description", "")),
-            "url": a.get("url"),
-            "image": a.get("image"),
-            "publishedAt": a.get("publishedAt"),
-            "source": a.get("source", {}).get("name"),
+    try:
+        response = requests.get(BASE_URL, params=params, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"GNews API request failed: {e}")
+        raise RuntimeError(f"GNews request failed: {e}")
+
+    data = response.json()
+    articles: List[Dict[str, Any]] = []
+
+    for item in data.get("articles", []):
+        articles.append({
+            "title": _clean_text(item.get("title")),
+            "description": _clean_text(item.get("description")),
+            "url": item.get("url"),
+            "source": item.get("source", {}).get("name"),
         })
-    return cleaned
+
+    logger.info(f"Fetched {len(articles)} articles")
+    return articles
