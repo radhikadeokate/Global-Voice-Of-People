@@ -1,21 +1,26 @@
 from app.services.openai_service import analyze_public_opinion
 
-
 def analyze_article(article: dict) -> dict:
-    """
-    Takes a single article from GNews and enriches it with AI analysis
-    """
+    if not isinstance(article, dict):
+        return {}
 
-    combined_text = f"""
-    Title: {article.get('title', '')}
-    Description: {article.get('description', '')}
-    """
+    title = article.get("title", "")
+    description = article.get("description", "")
 
-    analysis = analyze_public_opinion(combined_text)
+    combined_text = f"Title: {title}\nDescription: {description}".strip()
+
+    if not combined_text:
+        analysis = {
+            "sentiment": "neutral",
+            "bias": "neutral",
+            "explanation": "No content to analyze."
+        }
+    else:
+        analysis = analyze_public_opinion(combined_text)
 
     return {
-        **article,   # keep original fields
-        "sentiment": analysis["sentiment"],
-        "bias": analysis["bias"],
-        "explanation": analysis["explanation"],
+        **article,
+        "sentiment": analysis.get("sentiment", "neutral"),
+        "bias": analysis.get("bias", "neutral"),
+        "explanation": analysis.get("explanation", "No explanation available."),
     }
