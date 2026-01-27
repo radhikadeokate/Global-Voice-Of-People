@@ -38,7 +38,6 @@ def analyze_public_opinion(text: str) -> Dict[str, Any]:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": text}
             ],
-            response_format={"type": "json_object"},
             temperature=0.3
         )
 
