@@ -5,7 +5,7 @@ from pydantic import BaseModel
 class DashboardMeta(BaseModel):
     news_provider: str | None = None
     analysis_provider: str | None = None
-    analysis_failures: int
+    analysis_failures: int = 0
     version: str | None = None
     status: str | None = None
 
