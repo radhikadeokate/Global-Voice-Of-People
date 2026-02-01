@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 
 import { useDashboardData } from "@/hooks/useDashboardData";
 import {
-  useMediaBiasIndex,
   useSentimentTimeline,
   useTrendingTopics,
   useOutletBiasBreakdown,
@@ -19,22 +18,19 @@ import { RegionalHeatmap } from "@/components/dashboard/RegionalHeatmap";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 
 export default function Dashboard() {
-  /* -------- LIVE DASHBOARD DATA (NEW HOOK) -------- */
+  /* -------- LIVE DASHBOARD DATA -------- */
   const { data: liveData, loading: loadingLive, error: errorLive } =
     useDashboardData();
-  /* ----------------------------------------------- */
 
-  /* -------- TEMP MOCK HOOKS (WILL REMOVE LATER) --- */
-  const { data: biasIndex, isLoading: biasLoading } = useMediaBiasIndex();
+  /* -------- TEMP MOCK HOOKS (PHASE 2) -- */
   const { data: timeline, isLoading: timelineLoading } = useSentimentTimeline();
   const { data: topics, isLoading: topicsLoading } = useTrendingTopics();
   const { data: biasBreakdown, isLoading: breakdownLoading } =
     useOutletBiasBreakdown();
   const { data: regions, isLoading: regionsLoading } = useRegionData();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  /* ----------------------------------------------- */
 
-  /* -------- REAL GLOBAL SENTIMENT (LIVE) ---------- */
+  /* -------- LIVE SENTIMENT -------- */
   const positive = liveData?.summary?.sentiment?.positive ?? 0;
   const neutral = liveData?.summary?.sentiment?.neutral ?? 0;
   const negative = liveData?.summary?.sentiment?.negative ?? 0;
@@ -46,7 +42,14 @@ export default function Dashboard() {
 
   const sentimentTrend: "up" | "down" =
     positive >= negative ? "up" : "down";
-  /* ----------------------------------------------- */
+
+  /* -------- LIVE BIAS (NEW) -------- */
+  const biasSummary = liveData?.summary?.bias;
+
+  const biasScore = biasSummary?.neutral ?? 0;
+  const biasMaxScore = liveData?.count ?? 10;
+
+  /* ---------------------------------- */
 
   return (
     <div className="space-y-6">
@@ -107,14 +110,15 @@ export default function Dashboard() {
           isLoading={loadingLive}
         />
 
-        {/* STILL MOCK (NEXT STEPS) */}
+        {/* LIVE BIAS (AARCHI COMPONENT) */}
         <BiasGaugeCard
-          score={biasIndex?.score}
-          maxScore={biasIndex?.maxScore}
-          label={biasIndex?.label}
-          isLoading={biasLoading}
+          score={biasScore}
+          maxScore={biasMaxScore}
+          label="Neutral Bias"
+          isLoading={loadingLive}
         />
 
+        {/* MOCK (PHASE 2) */}
         <SentimentComparisonChart
           data={timeline}
           isLoading={timelineLoading}
