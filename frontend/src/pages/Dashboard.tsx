@@ -1,13 +1,7 @@
 import { motion } from "framer-motion";
 
 import { useDashboardData } from "@/hooks/useDashboardData";
-import {
-  useSentimentTimeline,
-  useTrendingTopics,
-  useOutletBiasBreakdown,
-  useRegionData,
-  useDashboardStats,
-} from "@/hooks/useData";
+import { useSentimentTimeline, useRegionData } from "@/hooks/useData";
 
 import { SentimentScoreCard } from "@/components/dashboard/SentimentScoreCard";
 import { BiasGaugeCard } from "@/components/dashboard/BiasGaugeCard";
@@ -17,18 +11,22 @@ import { OutletBiasPieChart } from "@/components/dashboard/OutletBiasPieChart";
 import { RegionalHeatmap } from "@/components/dashboard/RegionalHeatmap";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 
+/* ---------------- UTILS ---------------- */
+
+const BIAS_COLORS: Record<string, string> = {
+  positive: "#22c55e",
+  neutral: "#64748b",
+  negative: "#ef4444",
+};
+
 export default function Dashboard() {
   /* -------- LIVE DASHBOARD DATA -------- */
   const { data: liveData, loading: loadingLive, error: errorLive } =
     useDashboardData();
 
-  /* -------- TEMP MOCK HOOKS (PHASE 2) -- */
+  /* -------- TEMP MOCK (ONLY 2 LEFT) ---- */
   const { data: timeline, isLoading: timelineLoading } = useSentimentTimeline();
-  const { data: topics, isLoading: topicsLoading } = useTrendingTopics();
-  const { data: biasBreakdown, isLoading: breakdownLoading } =
-    useOutletBiasBreakdown();
   const { data: regions, isLoading: regionsLoading } = useRegionData();
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
   /* -------- LIVE SENTIMENT -------- */
   const positive = liveData?.summary?.sentiment?.positive ?? 0;
@@ -43,39 +41,51 @@ export default function Dashboard() {
   const sentimentTrend: "up" | "down" =
     positive >= negative ? "up" : "down";
 
-  /* -------- LIVE BIAS (NEW) -------- */
-  const biasSummary = liveData?.summary?.bias;
+  /* -------- LIVE BIAS (GAUGE + PIE) -------- */
+  const biasSummary: Record<string, number> =
+    (liveData?.summary?.bias as Record<string, number>) ?? {};
 
-  const biasScore = biasSummary?.neutral ?? 0;
-  const biasMaxScore = liveData?.count ?? 10;
+  const biasScore: number =
+    typeof biasSummary.neutral === "number" ? biasSummary.neutral : 0;
 
-  /* ---------------------------------- */
+  const biasMaxScore: number =
+    typeof liveData?.count === "number" ? liveData.count : 10;
+
+  const outletBiasData: {
+    name: string;
+    value: number;
+    color: string;
+  }[] = Object.entries(biasSummary).map(([name, value]) => ({
+    name,
+    value: Number(value),
+    color: BIAS_COLORS[name] ?? "#8884d8",
+  }));
+
+  /* -------- LIVE TRENDING TOPICS -------- */
+  const trendingTopics =
+    liveData?.articles?.slice(0, 8).map((article, index) => ({
+      id: `${index}`,
+      name: article.title.split(" ").slice(0, 3).join(" "),
+      volume: 1,
+      sentiment: article.sentiment ?? "neutral",
+      change: 0,
+    })) ?? [];
+
+  /* -------- LIVE STATS -------- */
+  const stats = {
+    totalArticles: liveData?.count ?? 0,
+    sourcesTracked: Object.keys(liveData?.publisher_insights ?? {}).length,
+    countriesCovered: 10,
+    languagesSupported: 1,
+    dataPointsToday: liveData?.count ?? 0,
+    avgResponseTime: 2,
+  };
 
   return (
     <div className="space-y-6">
-      {/* DEBUG / STATUS */}
+      {/* STATUS */}
       {loadingLive && <p>Loading live dashboard data...</p>}
       {errorLive && <p>Error: {errorLive}</p>}
-
-      {liveData && (
-        <div className="p-4 border rounded bg-muted text-sm">
-          <p>
-            <b>Live Topic:</b> {liveData.topic}
-          </p>
-          <p>
-            <b>Total Articles:</b> {liveData.count}
-          </p>
-          <p>
-            <b>Positive:</b> {positive}
-          </p>
-          <p>
-            <b>Neutral:</b> {neutral}
-          </p>
-          <p>
-            <b>Negative:</b> {negative}
-          </p>
-        </div>
-      )}
 
       {/* Header */}
       <motion.div
@@ -88,8 +98,7 @@ export default function Dashboard() {
             Global Intelligence Dashboard
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time sentiment analysis across{" "}
-            {stats?.countriesCovered ?? 0} countries
+            Real-time sentiment analysis across {stats.countriesCovered} countries
           </p>
         </div>
         <div className="text-right">
@@ -100,9 +109,8 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Main Grid */}
+      {/* MAIN GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* LIVE SENTIMENT */}
         <SentimentScoreCard
           score={sentimentScore}
           change={0}
@@ -110,7 +118,6 @@ export default function Dashboard() {
           isLoading={loadingLive}
         />
 
-        {/* LIVE BIAS (AARCHI COMPONENT) */}
         <BiasGaugeCard
           score={biasScore}
           maxScore={biasMaxScore}
@@ -118,24 +125,29 @@ export default function Dashboard() {
           isLoading={loadingLive}
         />
 
-        {/* MOCK (PHASE 2) */}
         <SentimentComparisonChart
           data={timeline}
           isLoading={timelineLoading}
         />
 
-        <TrendingTopicsCard topics={topics} isLoading={topicsLoading} />
+        <TrendingTopicsCard
+          topics={trendingTopics}
+          isLoading={loadingLive}
+        />
 
         <OutletBiasPieChart
-          data={biasBreakdown}
-          isLoading={breakdownLoading}
+          data={outletBiasData}
+          isLoading={loadingLive}
         />
 
         <div className="lg:col-span-2">
-          <RegionalHeatmap data={regions} isLoading={regionsLoading} />
+          <RegionalHeatmap
+            data={regions}
+            isLoading={regionsLoading}
+          />
         </div>
 
-        <StatsBar {...stats} isLoading={statsLoading} />
+        <StatsBar {...stats} isLoading={loadingLive} />
       </div>
     </div>
   );
