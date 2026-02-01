@@ -27,6 +27,28 @@ function getSentimentOpacity(sentiment: number): number {
 }
 
 export function RegionalHeatmap({ data, isLoading }: RegionalHeatmapProps) {
+  if (isLoading) {
+    return (
+      <GlassCard delay={0.5}>
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">Regional Opinion Heatmap</h3>
+        <div className="grid grid-cols-5 gap-2">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="h-16 bg-muted/50 rounded animate-pulse" />
+          ))}
+        </div>
+      </GlassCard>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <GlassCard delay={0.5}>
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">Regional Opinion Heatmap</h3>
+        <p className="text-muted-foreground text-sm">No regional data available</p>
+      </GlassCard>
+    );
+  }
+
   return (
     <GlassCard delay={0.5}>
       <div className="flex items-center justify-between mb-4">
@@ -43,37 +65,29 @@ export function RegionalHeatmap({ data, isLoading }: RegionalHeatmapProps) {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-5 gap-2">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-16 bg-muted/50 rounded animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-5 gap-2">
-          {data.map((region, index) => (
-            <motion.div
-              key={region.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ scale: 1.05, zIndex: 10 }}
-              className={cn(
-                'relative p-3 rounded-lg cursor-pointer transition-all group',
-                getSentimentColor(region.sentiment)
-              )}
-              style={{ opacity: getSentimentOpacity(region.sentiment) }}
-            >
-              <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 p-2 flex flex-col justify-center">
-                <p className="text-xs font-medium truncate">{region.name}</p>
-                <p className="text-lg font-bold data-number text-primary">{region.sentiment}%</p>
-                <p className="text-[10px] text-muted-foreground truncate">{region.topics[0]}</p>
-              </div>
-              <p className="text-xs font-bold text-foreground/80">{region.id}</p>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-5 gap-2">
+        {data.map((region, index) => (
+          <motion.div
+            key={region.id}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.05 }}
+            whileHover={{ scale: 1.05, zIndex: 10 }}
+            className={cn(
+              'relative p-3 rounded-lg cursor-pointer transition-all group',
+              getSentimentColor(region.sentiment)
+            )}
+            style={{ opacity: getSentimentOpacity(region.sentiment) }}
+          >
+            <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 p-2 flex flex-col justify-center">
+              <p className="text-xs font-medium truncate">{region.name}</p>
+              <p className="text-lg font-bold data-number text-primary">{region.sentiment}%</p>
+              <p className="text-[10px] text-muted-foreground truncate">{region.topics[0]}</p>
+            </div>
+            <p className="text-xs font-bold text-foreground/80">{region.id}</p>
+          </motion.div>
+        ))}
+      </div>
     </GlassCard>
   );
 }

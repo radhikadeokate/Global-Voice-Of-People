@@ -29,41 +29,54 @@ function formatVolume(num: number): string {
 }
 
 export function TrendingTopicsCard({ topics, isLoading }: TrendingTopicsCardProps) {
-  return (
-    <GlassCard delay={0.3}>
-      <h3 className="text-sm font-medium text-muted-foreground mb-4">Trending Topics</h3>
-
-      {isLoading ? (
+  if (isLoading) {
+    return (
+      <GlassCard delay={0.3}>
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">Trending Topics</h3>
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-8 bg-muted/50 rounded animate-pulse" />
           ))}
         </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {topics.slice(0, 8).map((topic, index) => {
-            const config = sentimentConfig[topic.sentiment];
-            const Icon = config.icon;
+      </GlassCard>
+    );
+  }
 
-            return (
-              <motion.div
-                key={topic.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.05 }}
-                className={cn(
-                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer transition-all hover:scale-105',
-                  config.color
-                )}
-              >
-                <Icon className="w-3 h-3" />
-                <span className="font-medium">{topic.name}</span>
-                <span className="text-xs opacity-70">{formatVolume(topic.volume)}</span>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+  if (!topics || topics.length === 0) {
+    return (
+      <GlassCard delay={0.3}>
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">Trending Topics</h3>
+        <p className="text-muted-foreground text-sm">No topics available</p>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard delay={0.3}>
+      <h3 className="text-sm font-medium text-muted-foreground mb-4">Trending Topics</h3>
+      <div className="flex flex-wrap gap-2">
+        {topics.slice(0, 8).map((topic, index) => {
+          const config = sentimentConfig[topic.sentiment];
+          const Icon = config.icon;
+
+          return (
+            <motion.div
+              key={topic.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.05 }}
+              className={cn(
+                'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer transition-all hover:scale-105',
+                config.color
+              )}
+            >
+              <Icon className="w-3 h-3" />
+              <span className="font-medium">{topic.name}</span>
+              <span className="text-xs opacity-70">{formatVolume(topic.volume)}</span>
+            </motion.div>
+          );
+        })}
+      </div>
     </GlassCard>
   );
 }

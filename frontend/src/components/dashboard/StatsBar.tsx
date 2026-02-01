@@ -27,6 +27,7 @@ export function StatsBar({ isLoading, ...stats }: StatsProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statItems.map((item, index) => {
           const Icon = item.icon;
+          // ✅ FIX: properly access the value using keyof StatsProps
           const value = stats[item.key as keyof StatsProps];
 
           return (
