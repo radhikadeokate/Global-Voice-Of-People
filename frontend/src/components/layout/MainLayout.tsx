@@ -1,33 +1,30 @@
-import React from "react";
-import Sidebar from "./Sidebar";
-import TopBar from "./TopBar";
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Sidebar } from './Sidebar';
+import { TopBar } from './TopBar';
 
-type MainLayoutProps = {
-  children: React.ReactNode;
-  user?: {
-    name?: string;
-    role?: string;
-  };
-};
+export function MainLayout() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children, user }) => {
   return (
-    <div className="flex h-screen w-full bg-gray-100 overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* TopBar */}
-        <TopBar user={user} />
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {children}
-        </main>
-      </div>
+    <div className="min-h-screen bg-background grid-pattern">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      <TopBar sidebarCollapsed={sidebarCollapsed} />
+      
+      <motion.main
+        initial={false}
+        animate={{ marginLeft: sidebarCollapsed ? 72 : 240 }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="pt-16 min-h-screen"
+      >
+        <div className="p-6">
+          <Outlet />
+        </div>
+      </motion.main>
     </div>
   );
-};
-
-export default MainLayout;
+}
