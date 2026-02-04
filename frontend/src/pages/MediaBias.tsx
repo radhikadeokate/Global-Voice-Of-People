@@ -8,36 +8,21 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
+  Cell,
 } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Minus, Filter } from 'lucide-react';
+
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/button';
-import { useMediaOutlets } from '@/hooks/useData';
 import { cn } from '@/lib/utils';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload) return null;
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { adaptPublisherInsights } from '@/lib/adapters/mediaBiasAdapter';
 
-  return (
-    <div className="chart-tooltip">
-      <p className="font-medium text-lg">{label}</p>
-      <div className="space-y-1 mt-2">
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Bias Score:</span>
-          <span className="font-medium data-number">{payload[0]?.payload.bias}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Sentiment:</span>
-          <span className="font-medium data-number">{payload[0]?.payload.sentiment}%</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Topic Focus:</span>
-          <span className="font-medium">{payload[0]?.payload.topicSkew}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
+/* ---------------------------------- */
+/* Helpers                            */
+/* ---------------------------------- */
 
 function getBiasLabel(bias: number): { label: string; color: string } {
   if (bias <= -30) return { label: 'Left', color: 'text-secondary' };
@@ -47,15 +32,82 @@ function getBiasLabel(bias: number): { label: string; color: string } {
   return { label: 'Right', color: 'text-destructive' };
 }
 
+function getBiasBarColor(bias: number) {
+  if (bias <= -30) return 'hsl(var(--chart-6))';
+  if (bias <= -10) return 'hsl(var(--chart-4))';
+  if (bias <= 10) return 'hsl(var(--success))';
+  if (bias <= 30) return 'hsl(var(--chart-3))';
+  return 'hsl(var(--destructive))';
+}
+
+const formatOutletName = (name: string) =>
+  name.length > 24 ? name.slice(0, 24) + '…' : name;
+
+/* ---------------------------------- */
+/* Tooltip                            */
+/* ---------------------------------- */
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0].payload;
+
+  return (
+    <div className="chart-tooltip">
+      <p className="font-medium text-lg">{label}</p>
+      <div className="space-y-1 mt-2">
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Bias Score:</span>
+          <span className="font-medium data-number">{data.bias}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Sentiment:</span>
+          <span className="font-medium data-number">{data.sentiment}%</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Topic Focus:</span>
+          <span className="font-medium">{data.topicSkew}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------------------------------- */
+/* Component                          */
+/* ---------------------------------- */
+
 export default function MediaBias() {
-  const { data: outlets, isLoading } = useMediaOutlets();
+  const { data: liveData, loading } = useDashboardData();
   const [sortBy, setSortBy] = useState<'name' | 'bias' | 'sentiment'>('bias');
+
+  const outlets = liveData?.publisher_insights
+    ? adaptPublisherInsights(liveData.publisher_insights)
+    : [];
 
   const sortedOutlets = [...outlets].sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     if (sortBy === 'bias') return a.bias - b.bias;
     return b.sentiment - a.sentiment;
   });
+
+  /* ---------------------------------- */
+  /* Empty State                        */
+  /* ---------------------------------- */
+
+  if (!loading && sortedOutlets.length === 0) {
+    return (
+      <GlassCard>
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Media Bias Analysis
+        </h3>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Publisher-level bias insights will appear once sufficient data becomes
+          available.
+        </p>
+      </GlassCard>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -66,11 +118,15 @@ export default function MediaBias() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl font-bold gradient-text">Media Bias Analysis</h1>
+          <h1 className="text-2xl font-bold gradient-text">
+            Media Bias Analysis
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Tracking bias and sentiment across {outlets.length} major outlets
+            Tracking bias and sentiment across {sortedOutlets.length} major
+            outlets
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Sort by:</span>
@@ -90,17 +146,24 @@ export default function MediaBias() {
         </div>
       </motion.div>
 
-      {/* Bias Scale Chart */}
+      {/* Bias Spectrum Chart (SAME UI, FIXED SPACING) */}
       <GlassCard>
-        <h3 className="text-sm font-medium text-muted-foreground mb-4">Bias Spectrum</h3>
-        <div className="h-80">
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">
+          Bias Spectrum
+        </h3>
+
+        <div style={{ height: Math.max(320, sortedOutlets.length * 42) }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={sortedOutlets}
               layout="vertical"
-              margin={{ top: 0, right: 30, left: 80, bottom: 0 }}
+              margin={{ top: 10, right: 30, left: 160, bottom: 10 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                horizontal={false}
+              />
               <XAxis
                 type="number"
                 domain={[-50, 50]}
@@ -113,17 +176,33 @@ export default function MediaBias() {
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
+                width={150}
+                tickFormatter={formatOutletName}
                 tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
-              <Bar
-                dataKey="bias"
-                fill="hsl(var(--primary))"
-                radius={[0, 4, 4, 0]}
+
+              <ReferenceLine
+                x={0}
+                stroke="hsl(var(--muted-foreground))"
               />
+
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
+              />
+
+              <Bar dataKey="bias" radius={[0, 4, 4, 0]}>
+                {sortedOutlets.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={getBiasBarColor(entry.bias)}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
+
         <div className="flex justify-between text-xs text-muted-foreground mt-4 px-20">
           <span>← Left Leaning</span>
           <span>Center</span>
@@ -131,16 +210,20 @@ export default function MediaBias() {
         </div>
       </GlassCard>
 
-      {/* Outlet Cards */}
+      {/* Outlet Cards (UNCHANGED UI) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading
+        {loading
           ? [...Array(6)].map((_, i) => (
               <div key={i} className="glass-card p-4 h-32 animate-pulse" />
             ))
           : sortedOutlets.map((outlet, index) => {
               const biasInfo = getBiasLabel(outlet.bias);
               const sentimentTrend =
-                outlet.sentiment > 50 ? 'up' : outlet.sentiment < 45 ? 'down' : 'neutral';
+                outlet.sentiment > 50
+                  ? 'up'
+                  : outlet.sentiment < 45
+                  ? 'down'
+                  : 'neutral';
 
               return (
                 <motion.div
@@ -152,11 +235,19 @@ export default function MediaBias() {
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-semibold text-lg">{outlet.name}</h3>
-                      <span className={cn('text-xs font-medium', biasInfo.color)}>
+                      <h3 className="font-semibold text-lg">
+                        {outlet.name}
+                      </h3>
+                      <span
+                        className={cn(
+                          'text-xs font-medium',
+                          biasInfo.color
+                        )}
+                      >
                         {biasInfo.label}
                       </span>
                     </div>
+
                     <div className="text-right">
                       <span className="text-2xl font-bold data-number text-primary">
                         {outlet.sentiment}%
@@ -171,7 +262,9 @@ export default function MediaBias() {
                         {sentimentTrend === 'neutral' && (
                           <Minus className="w-3 h-3 text-muted-foreground" />
                         )}
-                        <span className="text-xs text-muted-foreground">Sentiment</span>
+                        <span className="text-xs text-muted-foreground">
+                          Sentiment
+                        </span>
                       </div>
                     </div>
                   </div>

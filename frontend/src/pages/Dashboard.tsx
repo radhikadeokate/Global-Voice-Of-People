@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 
 import { useDashboardData } from "@/hooks/useDashboardData";
-import { useSentimentTimeline, useRegionData } from "@/hooks/useData";
+import { useRegionData } from "@/hooks/useData";
 
 import { SentimentScoreCard } from "@/components/dashboard/SentimentScoreCard";
 import { BiasGaugeCard } from "@/components/dashboard/BiasGaugeCard";
@@ -11,7 +11,7 @@ import { OutletBiasPieChart } from "@/components/dashboard/OutletBiasPieChart";
 import { RegionalHeatmap } from "@/components/dashboard/RegionalHeatmap";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 
-/* ---------------- UTILS ---------------- */
+/* ---------------- CONSTANTS ---------------- */
 
 const BIAS_COLORS: Record<string, string> = {
   positive: "#22c55e",
@@ -21,14 +21,16 @@ const BIAS_COLORS: Record<string, string> = {
 
 export default function Dashboard() {
   /* -------- LIVE DASHBOARD DATA -------- */
-  const { data: liveData, loading: loadingLive, error: errorLive } =
-    useDashboardData();
+  const {
+    data: liveData,
+    loading: loadingLive,
+    error: errorLive,
+  } = useDashboardData();
 
-  /* -------- TEMP MOCK (ONLY 2 LEFT) ---- */
-  const { data: timeline, isLoading: timelineLoading } = useSentimentTimeline();
+  /* -------- MOCK (INTENTIONAL) -------- */
   const { data: regions, isLoading: regionsLoading } = useRegionData();
 
-  /* -------- LIVE SENTIMENT -------- */
+  /* -------- SENTIMENT (LIVE) -------- */
   const positive = liveData?.summary?.sentiment?.positive ?? 0;
   const neutral = liveData?.summary?.sentiment?.neutral ?? 0;
   const negative = liveData?.summary?.sentiment?.negative ?? 0;
@@ -38,32 +40,45 @@ export default function Dashboard() {
   const sentimentScore =
     total === 0 ? 0 : Math.round(((positive - negative) / total) * 50 + 50);
 
-  const sentimentTrend: "up" | "down" =
-    positive >= negative ? "up" : "down";
+  /* -------- SENTIMENT COMPARISON (LIVE) -------- */
+  const sentimentComparisonData = liveData
+    ? [
+        {
+          label: "People",
+          value: Math.round(
+            ((positive + neutral) / Math.max(total, 1)) * 100
+          ),
+        },
+        {
+          label: "Media",
+          value: Math.round(
+            ((neutral + negative) / Math.max(total, 1)) * 100
+          ),
+        },
+      ]
+    : [];
 
-  /* -------- LIVE BIAS (GAUGE + PIE) -------- */
+  /* -------- BIAS (LIVE) -------- */
   const biasSummary: Record<string, number> =
     (liveData?.summary?.bias as Record<string, number>) ?? {};
 
-  const biasScore: number =
+  const biasScore =
     typeof biasSummary.neutral === "number" ? biasSummary.neutral : 0;
 
-  const biasMaxScore: number =
+  const biasMaxScore =
     typeof liveData?.count === "number" ? liveData.count : 10;
 
-  const outletBiasData: {
-    name: string;
-    value: number;
-    color: string;
-  }[] = Object.entries(biasSummary).map(([name, value]) => ({
-    name,
-    value: Number(value),
-    color: BIAS_COLORS[name] ?? "#8884d8",
-  }));
+  const outletBiasData = Object.entries(biasSummary).map(
+    ([name, value]) => ({
+      name,
+      value: Number(value),
+      color: BIAS_COLORS[name] ?? "#8884d8",
+    })
+  );
 
-  /* -------- LIVE TRENDING TOPICS -------- */
+  /* -------- TRENDING TOPICS (DERIVED LIVE) -------- */
   const trendingTopics =
-    liveData?.articles?.slice(0, 8).map((article, index) => ({
+    liveData?.articles?.slice(0, 8).map((article: any, index: number) => ({
       id: `${index}`,
       name: article.title.split(" ").slice(0, 3).join(" "),
       volume: 1,
@@ -71,11 +86,13 @@ export default function Dashboard() {
       change: 0,
     })) ?? [];
 
-  /* -------- LIVE STATS -------- */
+  /* -------- STATS (LIVE) -------- */
   const stats = {
     totalArticles: liveData?.count ?? 0,
-    sourcesTracked: Object.keys(liveData?.publisher_insights ?? {}).length,
-    countriesCovered: 10,
+    sourcesTracked: Object.keys(
+      liveData?.publisher_insights ?? {}
+    ).length,
+    countriesCovered: 10, // static for now
     languagesSupported: 1,
     dataPointsToday: liveData?.count ?? 0,
     avgResponseTime: 2,
@@ -84,10 +101,18 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* STATUS */}
-      {loadingLive && <p>Loading live dashboard data...</p>}
-      {errorLive && <p>Error: {errorLive}</p>}
+      {loadingLive && (
+        <p className="text-sm text-muted-foreground">
+          Loading live dashboard data…
+        </p>
+      )}
+      {errorLive && (
+        <p className="text-sm text-red-500">
+          Error: {errorLive}
+        </p>
+      )}
 
-      {/* Header */}
+      {/* HEADER */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -109,14 +134,10 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* MAIN GRID */}
+      {/* GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <SentimentScoreCard
-          score={sentimentScore}
-          change={0}
-          trend={sentimentTrend}
-          isLoading={loadingLive}
-        />
+        {/* LIVE */}
+        <SentimentScoreCard score={sentimentScore} change={0} />
 
         <BiasGaugeCard
           score={biasScore}
@@ -125,9 +146,10 @@ export default function Dashboard() {
           isLoading={loadingLive}
         />
 
+        {/* LIVE */}
         <SentimentComparisonChart
-          data={timeline}
-          isLoading={timelineLoading}
+          data={sentimentComparisonData}
+          isLoading={loadingLive}
         />
 
         <TrendingTopicsCard
@@ -140,6 +162,7 @@ export default function Dashboard() {
           isLoading={loadingLive}
         />
 
+        {/* MOCK (INTENTIONAL) */}
         <div className="lg:col-span-2">
           <RegionalHeatmap
             data={regions}
@@ -147,6 +170,7 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* LIVE */}
         <StatsBar {...stats} isLoading={loadingLive} />
       </div>
     </div>
