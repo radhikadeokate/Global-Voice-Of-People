@@ -9,43 +9,94 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+
 import { GlassCard } from '@/components/ui/GlassCard';
-import { useTrendingTopics } from '@/hooks/useData';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { cn } from '@/lib/utils';
 
+/* ---------------------------------- */
+/* Config (UNCHANGED)                 */
+/* ---------------------------------- */
+
 const sentimentConfig = {
-  positive: { color: 'text-success', bgColor: 'bg-success/10', icon: TrendingUp },
-  negative: { color: 'text-destructive', bgColor: 'bg-destructive/10', icon: TrendingDown },
-  neutral: { color: 'text-muted-foreground', bgColor: 'bg-muted', icon: Minus },
+  positive: {
+    color: 'text-success',
+    bgColor: 'bg-success/10',
+    icon: TrendingUp,
+  },
+  negative: {
+    color: 'text-destructive',
+    bgColor: 'bg-destructive/10',
+    icon: TrendingDown,
+  },
+  neutral: {
+    color: 'text-muted-foreground',
+    bgColor: 'bg-muted',
+    icon: Minus,
+  },
 };
 
+/* ---------------------------------- */
+/* Helpers                            */
+/* ---------------------------------- */
+
 function formatVolume(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(0)}K`;
   return num.toString();
 }
 
+const formatTopicName = (name: string) =>
+  name.length > 22 ? name.slice(0, 22) + '…' : name;
+
+/* ---------------------------------- */
+/* Tooltip                            */
+/* ---------------------------------- */
+
 const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload) return null;
+  if (!active || !payload || !payload.length) return null;
 
   return (
     <div className="chart-tooltip">
       <p className="font-medium">{label}</p>
       <p className="text-lg font-bold data-number mt-1">
-        {formatVolume(payload[0]?.value || 0)} mentions
+        {formatVolume(payload[0].value)} mentions
       </p>
     </div>
   );
 };
 
+/* ---------------------------------- */
+/* Component                          */
+/* ---------------------------------- */
+
 export default function Topics() {
-  const { data: topics, isLoading } = useTrendingTopics();
+  const { data, loading } = useDashboardData();
+
+  const topics = data?.trending_topics ?? [];
 
   const chartData = topics.map((t) => ({
     name: t.name,
     volume: t.volume,
     sentiment: t.sentiment,
   }));
+
+  /* ---------------------------------- */
+  /* Empty State                        */
+  /* ---------------------------------- */
+
+  if (!loading && topics.length === 0) {
+    return (
+      <GlassCard>
+        <h3 className="text-sm font-medium text-muted-foreground">
+          Trending Topics
+        </h3>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Trending topics will appear once sufficient live data is available.
+        </p>
+      </GlassCard>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -56,23 +107,33 @@ export default function Topics() {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold gradient-text">Trending Topics</h1>
+          <h1 className="text-2xl font-bold gradient-text">
+            Trending Topics
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Most discussed topics across all sources
           </p>
         </div>
+
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BarChart2 className="w-4 h-4" />
           <span>{topics.length} active topics</span>
         </div>
       </motion.div>
 
-      {/* Volume Chart */}
+      {/* Volume Chart (same UI, fixed spacing) */}
       <GlassCard>
-        <h3 className="text-sm font-medium text-muted-foreground mb-4">Topic Volume</h3>
-        <div className="h-72">
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">
+          Topic Volume
+        </h3>
+
+        <div style={{ height: Math.max(300, topics.length * 36) }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical">
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={{ top: 10, right: 30, left: 150, bottom: 10 }}
+            >
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="hsl(var(--border))"
@@ -90,21 +151,32 @@ export default function Topics() {
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
+                width={140}
+                tickFormatter={formatTopicName}
                 tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                width={120}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
-              <Bar dataKey="volume" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
+              />
+              <Bar
+                dataKey="volume"
+                fill="hsl(var(--primary))"
+                radius={[0, 4, 4, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </GlassCard>
 
-      {/* Topic Cards */}
+      {/* Topic Cards (UNCHANGED UI) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isLoading
+        {loading
           ? [...Array(8)].map((_, i) => (
-              <div key={i} className="glass-card p-4 h-32 animate-pulse" />
+              <div
+                key={i}
+                className="glass-card p-4 h-32 animate-pulse"
+              />
             ))
           : topics.map((topic, index) => {
               const config = sentimentConfig[topic.sentiment];
@@ -112,7 +184,7 @@ export default function Topics() {
 
               return (
                 <motion.div
-                  key={topic.id}
+                  key={topic.id ?? topic.name}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -141,10 +213,13 @@ export default function Topics() {
                     >
                       {topic.sentiment}
                     </span>
+
                     <span
                       className={cn(
                         'text-xs font-medium data-number',
-                        topic.change > 0 ? 'text-success' : 'text-destructive'
+                        topic.change > 0
+                          ? 'text-success'
+                          : 'text-destructive'
                       )}
                     >
                       {topic.change > 0 ? '+' : ''}
