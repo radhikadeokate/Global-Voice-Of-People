@@ -73,7 +73,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Topics() {
   const { data, loading } = useDashboardData();
 
-  const topics = data?.trending_topics ?? [];
+ const topics =
+  data?.articles?.slice(0, 8).map((article: any, index: number) => ({
+    id: `${index}`,
+    name: article.title.split(' ').slice(0, 3).join(' '),
+    volume: 1,
+    sentiment: article.sentiment || 'neutral',
+    change: 0,
+  })) ?? [];
+
 
   const chartData = topics.map((t) => ({
     name: t.name,
